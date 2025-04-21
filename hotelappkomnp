@@ -1,0 +1,170 @@
+using HotelApp.Data;
+using HotelApp.Models;
+using Microsoft.EntityFrameworkCore;
+
+using var context = new HotellContext();
+
+// Migrations
+context.Database.Migrate();
+
+SeedData(context);
+
+bool kör = true;
+
+while (kör)
+{
+    Console.Clear();
+    Console.WriteLine("=== Hotellhantering ===");
+    Console.WriteLine("1. Hantera rum");
+    Console.WriteLine("2. Hantera kunder");
+    Console.WriteLine("3. Hantera bokningar");
+    Console.WriteLine("0. Avsluta");
+    Console.Write("Ditt val: ");
+    var val = Console.ReadLine();
+
+    switch (val)
+    {
+        case "1":
+            HanteraRum(context);
+            break;
+        case "2":
+            HanteraKunder(context);
+            break;
+        case "3":
+            HanteraBokningar(context);
+            break;
+        case "0":
+            kör = false;
+            break;
+        default:
+            Console.WriteLine("Ogiltigt val, tryck på valfri knapp för att fortsätta.");
+            Console.ReadKey();
+            break;
+    }
+}
+
+static void SeedData(HotellContext context)
+{
+    if (!context.Kunder.Any())
+    {
+        context.Kunder.AddRange(
+            new Kund { Namn = "Anna Svensson", Epost = "anna@example.com" },
+            new Kund { Namn = "Erik Johansson", Epost = "erik@example.com" }
+        );
+    }
+
+    if (!context.Rum.Any())
+    {
+        context.Rum.AddRange(
+            new Rum { Rumsnummer = "101", Typ = "Enkel", PrisPerNatt = 500 },
+            new Rum { Rumsnummer = "102", Typ = "Dubbel", PrisPerNatt = 800 }
+        );
+    }
+
+    context.SaveChanges();
+}
+
+static void HanteraBokningar(HotellContext context)
+{
+    bool kör = true;
+    while (kör)
+    {
+        Console.Clear();
+        Console.WriteLine("=== Bokningsmeny ===");
+        Console.WriteLine("1. Lista alla bokningar");
+        Console.WriteLine("2. Lägg till ny bokning");
+        Console.WriteLine("3. Uppdatera bokning");
+        Console.WriteLine("4. Ta bort bokning");
+        Console.WriteLine("0. Tillbaka till huvudmenyn");
+        Console.Write("Ditt val: ");
+        var val = Console.ReadLine();
+
+        switch (val)
+        {
+            case "1":
+                ListaBokningar(context);
+                break;
+            case "2":
+                LäggTillBokning(context);
+                break;
+            case "3":
+                UppdateraBokning(context);
+                break;
+            case "4":
+                TaBortBokning(context);
+                break;
+            case "0":
+                kör = false;
+                break;
+            default:
+                Console.WriteLine("Ogiltigt val!");
+                Console.ReadKey();
+                break;
+        }
+    }
+}
+
+static void LäggTillBokning(HotellContext context)
+{
+    Console.Clear();
+    Console.WriteLine("=== Lägg till ny bokning ===");
+
+    ListaKunder(context);
+    Console.Write("Ange kund-ID: ");
+    if (!int.TryParse(Console.ReadLine(), out int kundId) || !context.Kunder.Any(k => k.Id == kundId))
+    {
+        Console.WriteLine("Ogiltigt kund-ID.");
+        Console.ReadKey();
+        return;
+    }
+
+    ListaRum(context);
+    Console.Write("Ange rum-ID: ");
+    if (!int.TryParse(Console.ReadLine(), out int rumId) || !context.Rum.Any(r => r.Id == rumId))
+    {
+        Console.WriteLine("Ogiltigt rum-ID.");
+        Console.ReadKey();
+        return;
+    }
+
+    Console.Write("Incheckningsdatum (ÅÅÅÅ-MM-DD): ");
+    if (!DateTime.TryParse(Console.ReadLine(), out DateTime incheckning) || incheckning < DateTime.Now.Date)
+    {
+        Console.WriteLine("Ogiltigt datum. Datum kan inte vara i det förflutna.");
+        Console.ReadKey();
+        return;
+    }
+
+    Console.Write("Utcheckningsdatum (ÅÅÅÅ-MM-DD): ");
+    if (!DateTime.TryParse(Console.ReadLine(), out DateTime utcheckning) || utcheckning <= incheckning)
+    {
+        Console.WriteLine("Ogiltigt datum. Utcheckning måste vara efter incheckning.");
+        Console.ReadKey();
+        return;
+    }
+
+    var finnsBokning = context.Bokningar
+        .Any(b => b.RumId == rumId && b.Incheckning < utcheckning && b.Utcheckning > incheckning);
+
+    if (finnsBokning)
+    {
+        Console.WriteLine("Rummet är redan bokat på detta datum.");
+        Console.ReadKey();
+        return;
+    }
+
+    var bokning = new Bokning
+    {
+        KundId = kundId,
+        RumId = rumId,
+        Incheckning = incheckning,
+        Utcheckning = utcheckning
+    };
+
+    context.Bokningar.Add(bokning);
+    context.SaveChanges();
+
+    Console.WriteLine("Bokningen har lagts till!");
+    Console.ReadKey();
+}
+
