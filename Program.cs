@@ -1,6 +1,9 @@
 ﻿using HotelApp.Data;
 using HotelApp.Models;
 using Microsoft.EntityFrameworkCore;
+using var context = new HotellContext();
+context.Database.Migrate(); 
+
 
 using var context = new HotellContext();
 
@@ -414,11 +417,13 @@ static void LäggTillBokning(HotellContext context)
     }
 
     Console.Write("Incheckningsdatum (ÅÅÅÅ-MM-DD): ");
-    if (!DateTime.TryParse(Console.ReadLine(), out DateTime incheckning))
-    {
-        Console.WriteLine("Ogiltigt datum.");
-        Console.ReadKey();
-        return;
+if (!DateTime.TryParse(Console.ReadLine(), out DateTime incheckning) || incheckning < DateTime.Now.Date)
+{
+    Console.WriteLine("Incheckningsdatum kan inte vara i det förflutna.");
+    Console.ReadKey();
+    return;
+}
+
     }
 
     Console.Write("Utcheckningsdatum (ÅÅÅÅ-MM-DD): ");
@@ -436,6 +441,17 @@ static void LäggTillBokning(HotellContext context)
         Incheckning = incheckning,
         Utcheckning = utcheckning
     };
+
+var överlappandeBokning = context.Bokningar
+    .Any(b => b.RumId == rumId && b.Incheckning < utcheckning && b.Utcheckning > incheckning);
+
+if (överlappandeBokning)
+{
+    Console.WriteLine("Rummet är redan bokat under denna period.");
+    Console.ReadKey();
+    return;
+}
+
 
     context.Bokningar.Add(bokning);
     context.SaveChanges();
